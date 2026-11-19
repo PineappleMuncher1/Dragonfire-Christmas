@@ -25,6 +25,7 @@ USER_AGENT = "PineappleMuncher1/Dragonfire-Christmas-PackBuilder/1.0 (Modrinth p
 # discovered recursively from each selected Modrinth version's metadata.
 PROJECTS = [
     "book-of-dragons",
+    "azurelib",
     "decorationx-christmas",
     "gingerbread-houses",
     "snow-real-magic",
@@ -103,7 +104,9 @@ def add_version(version: dict, requested_by: str):
             f"is not compatible with Forge {GAME_VERSION}."
         )
     version_cache[version_id] = version
-    selected[version.get("project_id", version_id)] = version
+    project_id = version.get("project_id")
+    if project_id:
+        resolve_project(project_id)
     print(f"Resolved: {version.get('name', version_id)} {version.get('version_number', '')}")
 
     for dep in version.get("dependencies", []):
@@ -112,6 +115,7 @@ def add_version(version: dict, requested_by: str):
         if dep.get("version_id"):
             dep_version = request_json(f"{API}/version/{dep['version_id']}")
         elif dep.get("project_id"):
+            resolve_project(dep["project_id"])
             dep_version = choose_version(dep["project_id"])
         else:
             continue
@@ -128,7 +132,7 @@ def main():
     files = []
     seen_paths = set()
     for version in sorted(version_cache.values(), key=lambda v: (v.get("name", ""), v["id"])):
-        project_slug = version.get("slug", "")
+        project_slug = project_cache.get(version.get("project_id", ""), {}).get("slug", "")
         for file in version["files"]:
             if not file.get("primary"):
                 continue
