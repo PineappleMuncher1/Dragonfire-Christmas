@@ -1,0 +1,34 @@
+name: Build Modrinth modpack
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tools/build_modrinth_pack.py"
+      - ".github/workflows/build-modrinth-pack.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Resolve Modrinth versions and build .mrpack
+        run: python tools/build_modrinth_pack.py
+      - name: Upload Modrinth pack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dragonfire-and-Christmas-1.20.1-Forge
+          path: |
+            dist/*.mrpack
+            dist/build-report.json
+          if-no-files-found: error
+          retention-days: 30
