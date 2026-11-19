@@ -98,13 +98,35 @@ def add_version(version: dict, requested_by: str):
     version_id = version["id"]
     if version_id in version_cache:
         return
-    if not compatible(version):
-        raise RuntimeError(
-            f"Required dependency {version.get('name', version_id)} ({version_id}) "
-            f"is not compatible with Forge {GAME_VERSION}."
-        )
-    version_cache[version_id] = version
     project_id = version.get("project_id")
+    # Some projects pin a dependency to a version ID whose compatibility
+    # metadata is stale or incomplete. Prefer a current compatible release
+    # from that same project before treating the dependency as unavailable.
+    if not compatible(version):
+        if project_id:
+            resolve_project(project_id)
+            replacement = choose_version(project_id)
+            if compatible(replacement):
+                print(
+                    f"Dependency metadata fallback: {version.get('name', version_id)} "
+                    f"{version.get('version_number', '')} -> "
+                    f"{replacement.get('version_number', replacement['id'])}"
+                )
+                version = replacement
+                version_id = version["id"]
+                if version_id in version_cache:
+                    return
+            else:
+                raise RuntimeError(
+                    f"Required dependency {version.get('name', version_id)} "
+                    f"has no compatible Forge {GAME_VERSION} release."
+                )
+        else:
+            raise RuntimeError(
+                f"Required dependency {version.get('name', version_id)} ({version_id}) "
+                f"is not compatible with Forge {GAME_VERSION} and has no project metadata."
+            )
+    version_cache[version_id] = version
     if project_id:
         resolve_project(project_id)
     print(f"Resolved: {version.get('name', version_id)} {version.get('version_number', '')}")
